@@ -15,3 +15,8 @@ Is RPID Equal? : true
 Is Signature Vaild? : true
 Is Not a Replay Attack? : true
 ```
+# TODO
+- [x] Verify With Public Key
+- [x] Parse authenticatorData
+- [ ] Authentication Assertion
+- [ ] Attestation
