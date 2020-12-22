@@ -10,32 +10,146 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"math/big"
+	"math/rand"
+	"net/http"
+	"time"
 	"unicode/utf8"
+
+	"github.com/akyoto/cache"
+	"github.com/labstack/echo"
+	"github.com/labstack/echo/middleware"
+	"golang.org/x/crypto/acme/autocert"
 )
 
-const sighex = "3045022100cc44c4581ac0c883e57ab93e793d15ddc07a01171c93a6274801dc4681d31e2902204741fa153289a73b4703e1d4450132e9b1d59b7261c306221a46daa16d7f346b"
-const AuthenticatorDatahex = "568147b87f96840205f3bea7b974e678fcf904b2d08c87c5ab323afeadd785a70100000002"
-const ClientDataJSONhex = "7b2274797065223a22776562617574686e2e676574222c226368616c6c656e6765223a22587a5f794a4a355478346b4d444169426278714267465039526171362d506550377262675873724a7a3430222c226f726967696e223a2268747470733a2f2f6669646f3264656d6f2e6e65746c6966792e617070222c2263726f73734f726967696e223a66616c73657d"
-
-var RealRPID = []byte("fido2demo.netlify.app")
-var RealRPIDHashArr = sha256.Sum256(RealRPID)
-var RealRPIDHash = RealRPIDHashArr[:]
-
-func main() {
-	verifyResult, Newcount := verify(
-		RealRPID,
-		1,
-		"5f3ff2249e53c7890c0c08816f1a818053fd45aabaf8f78feeb6e05ecac9cf8d",
-		"9e7592e341f083e7d53dffe2d0b37c3837c8c8f783b72f48997781bfeec15175",
-		"061e64b97d8299ca795fd492d07b87ed0d79a92e29642dad6c106caf4c99bd60",
-		AuthenticatorDatahex,
-		ClientDataJSONhex,
-		sighex,
-	)
-	fmt.Println(verifyResult, Newcount)
+type authChallenge struct {
+	UserName   string
+	AuthData   string
+	Clientjson string
+	Signature  string
+	SessionID  string
 }
 
+type credential struct {
+	UserName string
+	Pubx     string
+	Puby     string
+	ID       string
+	counter  int
+}
+
+type session struct {
+	SessionID string
+	ID        string
+	UserName  string
+	Challenge string
+}
+
+func main() {
+	store := cache.New(time.Hour * 1)
+	sessions := cache.New(time.Minute * 5)
+	e := echo.New()
+	e.AutoTLSManager.Cache = autocert.DirCache("../.tlscache")
+	e.Use(middleware.StaticWithConfig(middleware.StaticConfig{
+		Root:   "public",
+		Browse: false,
+	}))
+	e.POST("/verify", func(c echo.Context) error {
+		Challenge := authChallenge{}
+		request := c.Request()
+		body, err := ioutil.ReadAll(request.Body)
+		//fmt.Println(string(body))
+		if err != nil {
+			return c.String(http.StatusBadRequest, "400 Bad Request")
+		}
+		err = json.Unmarshal(body, &Challenge)
+		if err != nil {
+			return c.String(http.StatusBadRequest, "400 Bad Request")
+		}
+		v, exists := store.Get(Challenge.UserName)
+		if exists {
+			CurSession, exists := sessions.Get(Challenge.SessionID)
+			if exists && CurSession.(session).UserName == v.(credential).UserName {
+				Credential := v.(credential)
+				Isvaild, newcount := verify(
+					[]byte(request.Host),
+					Credential.counter,
+					CurSession.(session).Challenge,
+					Credential.Pubx,
+					Credential.Puby,
+					Challenge.AuthData,
+					Challenge.Clientjson,
+					Challenge.Signature,
+				)
+				if Isvaild {
+					Credential.counter = newcount
+					store.Set(Challenge.UserName, Credential, 0)
+					return c.String(http.StatusOK, "OK Done")
+				}
+			}
+			return c.String(http.StatusNotAcceptable, "Not Acceptable")
+		}
+		return c.String(http.StatusNotAcceptable, "Not Acceptable")
+	})
+
+	e.POST("/credential", func(c echo.Context) error {
+		newCredential := credential{}
+		request := c.Request()
+		body, err := ioutil.ReadAll(request.Body)
+		if err != nil {
+			return c.String(http.StatusBadRequest, "400 Bad Request")
+		}
+		err = json.Unmarshal(body, &newCredential)
+		if err != nil {
+			return c.String(http.StatusBadRequest, "400 Bad Request")
+		}
+		_, exists := store.Get(newCredential.UserName)
+		if exists {
+			return c.String(http.StatusConflict, "StatusConflict")
+		}
+		newCredential.counter = 1
+		store.Set(newCredential.UserName, newCredential, time.Hour*1)
+		return c.String(http.StatusOK, "OK")
+	})
+
+	e.POST("/session", func(c echo.Context) error {
+		request := c.Request()
+		body, err := ioutil.ReadAll(request.Body)
+		if err != nil {
+			return c.String(http.StatusBadRequest, "400 Bad Request")
+		}
+		type UsernameJSON struct {
+			UserName string
+		}
+		uname := UsernameJSON{}
+		err = json.Unmarshal(body, &uname)
+		if err != nil {
+			return c.String(http.StatusBadRequest, "400 Bad Request")
+		}
+		username := uname.UserName
+		NewChallenge := make([]byte, 16)
+		SessionID := make([]byte, 16)
+		rand.Read(NewChallenge)
+		rand.Read(SessionID)
+		data, exists := store.Get(username)
+		if !exists {
+			return c.String(http.StatusBadRequest, "400 Bad Request")
+		}
+		userdata := data.(credential)
+		NewSession := session{}
+		NewSession.Challenge = hex.EncodeToString(NewChallenge)
+		NewSession.SessionID = hex.EncodeToString(SessionID)
+		NewSession.UserName = username
+		NewSession.ID = userdata.ID
+		sessions.Set(NewSession.SessionID, NewSession, 0)
+		return c.JSON(http.StatusOK, NewSession)
+	})
+
+	e.Logger.Info(e.StartAutoTLS(":1323"))
+}
+
+//ClientDataJSONType JSON
 type ClientDataJSONType struct {
 	Type        string
 	Challenge   string
@@ -53,7 +167,7 @@ func verify(RPID []byte, PrevSignCount int, Challenge, PubX, PubY, AuthData, Cli
 	if !VerifySuccess {
 		return false, PrevSignCount
 	}
-	sig, err := hex.DecodeString(sighex)
+	sig, err := hex.DecodeString(signature)
 	if err != nil {
 		return false, PrevSignCount
 	}
@@ -113,9 +227,9 @@ func verify(RPID []byte, PrevSignCount int, Challenge, PubX, PubY, AuthData, Cli
 	if !VerifySuccess {
 		return false, PrevSignCount
 	}
+	SignCount := AuthenticatorData[33:37]
 
 	RPIDHash := AuthenticatorData[:32]
-	SignCount := AuthenticatorData[33:37]
 
 	hash256 := sha256.New()
 	hash256.Write(RPID)
