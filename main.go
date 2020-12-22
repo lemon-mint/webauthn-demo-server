@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/sha256"
+	"encoding/asn1"
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
@@ -241,8 +242,18 @@ func verify(RPID []byte, PrevSignCount int, Challenge, PubX, PubY, AuthData, Cli
 
 	cDataHash := sha256.Sum256(ClientDataJSON)
 	MainHash := append(AuthenticatorData, cDataHash[:]...)
+	type SigStruct struct {
+		R *big.Int
+		S *big.Int
+	}
+	signatureASN1 := SigStruct{}
+	_, err = asn1.Unmarshal(sig, &signatureASN1)
+	if err != nil {
+		return false, PrevSignCount
+	}
 	sigData := sha256.Sum256(MainHash)
-	SigVaild := ecdsa.VerifyASN1(&pubkey, sigData[:], sig)
+	//SigVaild := ecdsa.VerifyASN1(&pubkey, sigData[:], sig)
+	SigVaild := ecdsa.Verify(&pubkey, sigData[:], signatureASN1.R, signatureASN1.S)
 	fmt.Println("Is Signature Vaild? :", SigVaild)
 	if !SigVaild {
 		return false, PrevSignCount
