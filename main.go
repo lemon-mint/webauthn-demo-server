@@ -52,7 +52,7 @@ func main() {
 	e := echo.New()
 	e.AutoTLSManager.Cache = autocert.DirCache("../.tlscache")
 	e.Use(middleware.StaticWithConfig(middleware.StaticConfig{
-		Root:   "public",
+		Root:   "views",
 		Browse: false,
 	}))
 	e.POST("/verify", func(c echo.Context) error {

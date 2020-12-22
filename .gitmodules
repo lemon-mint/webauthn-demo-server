@@ -1,0 +1,3 @@
+[submodule "views"]
+	path = views
+	url = https://github.com/lemon-mint/webauthn-demo-client.git
