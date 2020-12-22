@@ -108,7 +108,7 @@ func main() {
 		if exists {
 			return c.String(http.StatusConflict, "StatusConflict")
 		}
-		newCredential.counter = 1
+		newCredential.counter = -1
 		store.Set(newCredential.UserName, newCredential, time.Hour*1)
 		return c.String(http.StatusOK, "OK")
 	})
