@@ -4,3 +4,12 @@ bin
 pkg/*
 bin/*
 .vscode
+
+src/github.com
+src/golang.org
+src/github.com/*
+src/golang.org/*
+pkg
+bin
+.vscode
+*.exe
