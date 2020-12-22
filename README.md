@@ -1,4 +1,5 @@
 # webauthn-demo-server
+![Go](https://github.com/lemon-mint/webauthn-demo-server/workflows/Go/badge.svg)
 
 Simple Demo Page Backend server
 
