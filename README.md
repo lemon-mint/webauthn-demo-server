@@ -18,5 +18,10 @@ Is Not a Replay Attack? : true
 # TODO
 - [x] Verify With Public Key
 - [x] Parse authenticatorData
+- [x] Attestation
 - [ ] Authentication Assertion
-- [ ] Attestation
+
+### P.S.
+```
+Looking for hosting provider~
+```
