@@ -1,5 +1,5 @@
 # webauthn-demo-server
-![Go](https://github.com/lemon-mint/webauthn-demo-server/workflows/Go/badge.svg)
+[![GoBuildState](https://github.com/lemon-mint/webauthn-demo-server/workflows/Go/badge.svg)](https://github.com/lemon-mint/webauthn-demo-server/actions?query=workflow%3AGo)
 
 Simple Demo Page Backend server
 
