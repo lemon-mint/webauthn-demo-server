@@ -15,6 +15,7 @@ import (
 	"math/big"
 	"math/rand"
 	"net/http"
+	"os"
 	"time"
 	"unicode/utf8"
 
@@ -146,8 +147,13 @@ func main() {
 		sessions.Set(NewSession.SessionID, NewSession, 0)
 		return c.JSON(http.StatusOK, NewSession)
 	})
-
-	e.Logger.Info(e.StartAutoTLS(":1323"))
+	HerokuPort := os.Getenv("PORT")
+	if HerokuPort != "" {
+		e.Logger.Info(e.StartAutoTLS(":" + HerokuPort))
+	} else {
+		e.Logger.Info(e.StartAutoTLS(":1323"))
+	}
+	return
 }
 
 //ClientDataJSONType JSON

@@ -1,4 +1,4 @@
-module github.com/lemon-mint/webauthn-demo-server.git
+module github.com/lemon-mint/webauthn-demo-server
 
 go 1.15
 
