@@ -1,5 +1,6 @@
 module github.com/lemon-mint/webauthn-demo-server
 
+// +heroku goVersion go1.15
 go 1.15
 
 require (

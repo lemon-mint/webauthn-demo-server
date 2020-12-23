@@ -149,7 +149,7 @@ func main() {
 	})
 	HerokuPort := os.Getenv("PORT")
 	if HerokuPort != "" {
-		e.Logger.Info(e.StartAutoTLS(":" + HerokuPort))
+		e.Logger.Info(e.Start(":" + HerokuPort))
 	} else {
 		e.Logger.Info(e.StartAutoTLS(":1323"))
 	}
