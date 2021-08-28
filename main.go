@@ -19,10 +19,9 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/labstack/echo"
-	"github.com/labstack/echo/middleware"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"github.com/patrickmn/go-cache"
-	"golang.org/x/crypto/acme/autocert"
 )
 
 type authChallenge struct {
@@ -52,7 +51,6 @@ func main() {
 	store := cache.New(time.Hour*1, 10*time.Minute)
 	sessions := cache.New(time.Minute*5, 10*time.Minute)
 	e := echo.New()
-	e.AutoTLSManager.Cache = autocert.DirCache("../.tlscache")
 	e.Use(middleware.StaticWithConfig(middleware.StaticConfig{
 		Root:   "views",
 		Browse: false,
@@ -151,7 +149,7 @@ func main() {
 	if HerokuPort != "" {
 		e.Logger.Info(e.Start(":" + HerokuPort))
 	} else {
-		e.Logger.Info(e.StartAutoTLS(":1323"))
+		e.Logger.Info(e.Start(":1323"))
 	}
 }
 
