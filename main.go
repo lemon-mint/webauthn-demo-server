@@ -19,9 +19,9 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/akyoto/cache"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
+	"github.com/patrickmn/go-cache"
 	"golang.org/x/crypto/acme/autocert"
 )
 
@@ -49,8 +49,8 @@ type session struct {
 }
 
 func main() {
-	store := cache.New(time.Hour * 1)
-	sessions := cache.New(time.Minute * 5)
+	store := cache.New(time.Hour*1, 10*time.Minute)
+	sessions := cache.New(time.Minute*5, 10*time.Minute)
 	e := echo.New()
 	e.AutoTLSManager.Cache = autocert.DirCache("../.tlscache")
 	e.Use(middleware.StaticWithConfig(middleware.StaticConfig{
@@ -153,7 +153,6 @@ func main() {
 	} else {
 		e.Logger.Info(e.StartAutoTLS(":1323"))
 	}
-	return
 }
 
 //ClientDataJSONType JSON
